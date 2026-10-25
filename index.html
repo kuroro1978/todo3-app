@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="今日の3つ">
+<link rel="manifest" href="manifest.json">
+<title>今日やること3つ</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0b0c;--card:#171719;--line:#2b2b2f;--text:#f4f4f5;--muted:#a1a1aa}
+*{box-sizing:border-box} body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:calc(env(safe-area-inset-top) + 24px) 18px calc(env(safe-area-inset-bottom) + 24px)}
+.wrap{max-width:560px;margin:0 auto} h1{font-size:30px;margin:6px 0}.sub{color:var(--muted);margin-bottom:22px;font-size:14px}
+.date{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:7px 11px;color:var(--muted);font-size:13px;margin-bottom:12px}
+.task{display:grid;grid-template-columns:42px 1fr;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;margin:12px 0}
+.num{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;border:1px solid var(--line);font-weight:700;font-size:18px}
+input[type=text]{width:100%;border:0;outline:none;background:transparent;color:var(--text);font-size:18px;padding:8px 4px}
+input::placeholder{color:#68686f}.done input[type=text]{text-decoration:line-through;color:var(--muted)}
+.checkrow{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;margin-top:8px} input[type=checkbox]{width:20px;height:20px}
+.actions{display:flex;gap:10px;margin-top:18px} button{flex:1;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:14px;padding:13px 14px;font-size:15px;font-weight:600}
+button.primary{background:#fff;color:#111;border-color:#fff}
+.progress{margin-top:20px;background:#1d1d20;border-radius:999px;overflow:hidden;height:10px}.bar{height:100%;width:0;background:#f4f4f5;transition:.25s}.status{color:var(--muted);font-size:13px;margin-top:8px;text-align:center}
+.hint{margin-top:28px;padding:14px 16px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);font-size:13px;line-height:1.6}
+</style>
+</head>
+<body>
+<main class="wrap">
+<div class="date" id="today"></div>
+<h1>今日やること3つ</h1>
+<div class="sub">3つだけ決める。終わったらチェック。</div>
+<section id="tasks"></section>
+<div class="progress"><div class="bar" id="bar"></div></div>
+<div class="status" id="status">0 / 3 完了</div>
+<div class="actions"><button id="clearBtn">今日をリセット</button><button class="primary" id="saveBtn">保存</button></div>
+<div class="hint">入力内容はこの端末のブラウザ内に保存されます。外部サーバーへ送信する処理はありません。</div>
+</main>
+<script>
+const today=new Date();
+const key="todo3-"+[today.getFullYear(),String(today.getMonth()+1).padStart(2,"0"),String(today.getDate()).padStart(2,"0")].join("-");
+document.getElementById("today").textContent=today.toLocaleDateString("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"});
+const saved=JSON.parse(localStorage.getItem(key)||"null")||[{text:"",done:false},{text:"",done:false},{text:"",done:false}];
+const tasksEl=document.getElementById("tasks");
+function render(){
+  tasksEl.innerHTML="";
+  saved.forEach((task,i)=>{
+    const wrap=document.createElement("div"); wrap.className="task"+(task.done?" done":"");
+    const n=document.createElement("div"); n.className="num"; n.textContent=i+1;
+    const right=document.createElement("div");
+    const input=document.createElement("input"); input.type="text"; input.placeholder=["一番大事なこと","次にやること","できたら嬉しいこと"][i]; input.value=task.text;
+    input.addEventListener("input",e=>{saved[i].text=e.target.value;autoSave();});
+    const row=document.createElement("label"); row.className="checkrow";
+    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=task.done;
+    cb.addEventListener("change",e=>{saved[i].done=e.target.checked;autoSave();render();});
+    row.appendChild(cb); row.appendChild(document.createTextNode("完了"));
+    right.appendChild(input); right.appendChild(row); wrap.appendChild(n); wrap.appendChild(right); tasksEl.appendChild(wrap);
+  });
+  updateProgress();
+}
+function updateProgress(){const done=saved.filter(x=>x.done).length;document.getElementById("bar").style.width=(done/3*100)+"%";document.getElementById("status").textContent=`${done} / 3 完了`;}
+function autoSave(){localStorage.setItem(key,JSON.stringify(saved));updateProgress();}
+document.getElementById("saveBtn").addEventListener("click",()=>{autoSave();const b=document.getElementById("saveBtn");b.textContent="保存しました ✓";setTimeout(()=>b.textContent="保存",1200);});
+document.getElementById("clearBtn").addEventListener("click",()=>{if(!confirm("今日の3つをリセットしますか？"))return;saved.forEach(x=>{x.text="";x.done=false;});autoSave();render();});
+render();
+if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js").catch(()=>{}));}
+</script>
+</body>
+</html>
